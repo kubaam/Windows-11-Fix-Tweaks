@@ -20,17 +20,6 @@ This **all-in-one batch file** aims to streamline essential **Windows 11 fixes**
 ## Introduction
 This repository provides a **free** and **open-source** solution to help **Windows 11** users quickly fix common issues, **optimize performance**, and tweak privacy settings. Whether you're experiencing **system crashes**, **sluggish performance**, or want to remove **bloatware** and disable **telemetry**, this script can do it all in just a few steps.
 
-### Key SEO Highlights
-- **Windows 11 Fix**  
-- **Advanced Tweaks**  
-- **Performance Optimization**  
-- **Privacy and Telemetry**  
-- **Batch Script**  
-- **DISM / SFC**  
-- **Bloatware Removal**  
-
-These keywords help **maximize traffic** and ensure that anyone looking for a **Windows 11 optimization** tool can find this repository easily.
-
 ---
 
 ## Features
@@ -107,3 +96,18 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 For any questions or feedback, open an issue or reach out on GitHub. We look forward to hearing your **success stories** or **improvements**. 
 
 > **Remember**: If this script helped you, please **star** the repository and **share** with others looking for a comprehensive **Windows 11 fix and tweaks** solution!
+
+---
+
+### Key SEO Highlights
+- **Windows 11 Fix**  
+- **Advanced Tweaks**  
+- **Performance Optimization**  
+- **Privacy and Telemetry**  
+- **Batch Script**  
+- **DISM / SFC**  
+- **Bloatware Removal**  
+
+These keywords help **maximize traffic** and ensure that anyone looking for a **Windows 11 optimization** tool can find this repository easily.
+
+---
