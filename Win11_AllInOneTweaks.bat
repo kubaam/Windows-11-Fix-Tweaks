@@ -1,5 +1,5 @@
 @echo off
-title Windows 11 Fix & Tweaks (with Advanced Options)
+title Windows 11 Fix & Tweaks (with Advanced Options & Network Fixes)
 echo ==================================================
 echo  Windows 11 Fix & Tweaks - USE AT YOUR OWN RISK
 echo ==================================================
@@ -146,9 +146,6 @@ echo ==================================================
 echo  Step 9: Advanced System & Registry Tweaks
 echo ==================================================
 
-:: (We re-check for Admin privileges in a different way here, but we already did above; 
-::  leaving it as-is for clarity—it won't hurt to do it twice.)
-
 echo.
 echo [INFO] Checking for DISM to ensure Admin privileges...
 dism >nul 2>&1 || (
@@ -206,8 +203,6 @@ if %errorlevel%==0 (
 )
 
 :: NETWORK PERFORMANCE - ENABLE TCP ACK FREQUENCY OPTIMIZATION
-:: NOTE: Usually you need to specify exact subkeys in \Interfaces\{GUID}\ for each adapter
-:: but we'll assume a global attempt. This might need manual adjustments per adapter.
 reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" /v TcpAckFrequency /t REG_DWORD /d 1 /f >nul 2>&1
 if %errorlevel%==0 (
     echo [OK] TCP Ack Frequency optimization enabled.
@@ -237,6 +232,25 @@ if %errorlevel%==0 (
 ) else (
     echo [ERROR] Failed to optimize system responsiveness.
 )
+
+::--------------------------------------------------------------------------
+:: Step 10: Network Issues Fixes
+::--------------------------------------------------------------------------
+echo.
+echo ==================================================
+echo  Step 10: Network Issues Fixes
+echo ==================================================
+echo Resetting TCP/IP stack...
+netsh int ip reset
+echo Flushing DNS...
+ipconfig /flushdns
+echo Resetting Winsock...
+netsh winsock reset
+echo Releasing and Renewing IP...
+ipconfig /release
+ipconfig /renew
+echo.
+echo [INFO] Network related fixes have been applied.
 
 ::--------------------------------------------------------------------------
 :: Done
