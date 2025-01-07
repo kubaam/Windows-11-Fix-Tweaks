@@ -86,11 +86,6 @@ If you find a bug or want to request a feature:
 
 ---
 
-## License
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
-
----
-
 **Enjoy your optimized Windows 11!**  
 
 For any questions or feedback, open an issue or reach out on GitHub. We look forward to hearing your **success stories** or **improvements**. 
