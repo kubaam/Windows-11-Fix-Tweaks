@@ -96,6 +96,19 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 For any questions or feedback, open an issue or reach out on GitHub. We look forward to hearing your **success stories** or **improvements**. 
 
 > **Remember**: If this script helped you, please **star** the repository and **share** with others looking for a comprehensive **Windows 11 fix and tweaks** solution!
+---
+
+## **Support and Contributions** 🤝  
+
+Feel free to contribute or report bugs via GitHub. Pull requests are welcome!  
+If you appreciate this tool, you can support its development by donating here:  
+[**PayPal - Jakub Ambrus**](https://paypal.me/JakubAmbrus)  
+
+---
+
+## **License** 📜  
+
+This project is licensed under the **MIT License**. See `LICENSE` for details.  
 
 ---
 
