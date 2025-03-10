@@ -1,8 +1,8 @@
-# Windows 11 Fix & Tweaks – All-in-One Batch Script
+# Windows 11 Fix and Tweaks – All-in-One Batch Script
 
 > **Ultimate** Windows 11 **optimization**, **fixes**, and **performance** enhancements – all in a single script.
 
-This **all-in-one batch file** aims to streamline essential **Windows 11 fixes**, **speed tweaks**, **privacy enhancements**, and **performance** boosts. It combines **System File Checker (SFC)**, **DISM** repairs, **Windows Update resets**, **Microsoft Store repairs**, plus advanced registry and boot tweaks for maximum **system optimization**. 
+This **all-in-one batch file** aims to streamline essential **Windows 11 fixes**, **speed tweaks**, **privacy enhancements**, and **performance** boosts. It combines **System File Checker (SFC)**, **DISM** repairs, **Windows Update resets**, **Microsoft Store repairs**, plus advanced registry and boot tweaks for maximum **system optimization**.
 
 ---
 
@@ -10,7 +10,7 @@ This **all-in-one batch file** aims to streamline essential **Windows 11 fixes**
 - [Introduction](#introduction)
 - [Features](#features)
 - [Usage](#usage)
-- [Important Notes & Disclaimers](#important-notes--disclaimers)
+- [Important Notes--Disclaimers](#important-notes--disclaimers)
 - [Screenshots](#screenshots)
 - [Contributing](#contributing)
 - [License](#license)
@@ -18,92 +18,95 @@ This **all-in-one batch file** aims to streamline essential **Windows 11 fixes**
 ---
 
 ## Introduction
-This repository provides a **free** and **open-source** solution to help **Windows 11** users quickly fix common issues, **optimize performance**, and tweak privacy settings. Whether you're experiencing **system crashes**, **sluggish performance**, or want to remove **bloatware** and disable **telemetry**, this script can do it all in just a few steps.
+This repository provides a **free** and **open-source** solution to help **Windows 11** users quickly fix common issues, **optimize performance**, and tweak privacy settings. Whether you're experiencing **system crashes**, **sluggish performance**, or want to remove **bloatware** and disable **telemetry**, this script can do it all in just a few simple steps.
 
 ---
 
 ## Features
-1. **System File Checker (SFC)** – Automatically scans and repairs corrupted system files.  
-2. **DISM** – Restores system health with the `/scanhealth`, `/checkhealth`, and `/restorehealth` commands.  
-3. **Windows Update Reset** – Stops relevant services, clears `SoftwareDistribution` and `catroot2` folders, and restarts services.  
-4. **Microsoft Store Repair** – Re-registers Store applications to fix many **Windows Store** and **UWP** app issues.  
-5. **Privacy Tweaks** – Disables **telemetry**, **Cortana**, and location services for enhanced **privacy**.  
-6. **Visual Effects Adjustment** – Disables animations and set performance-based visual settings.  
-7. **Optional Bloatware Removal** – Remove common **pre-installed apps** to declutter your system.  
+1. **System File Checker (SFC)** – Automatically scans and repairs corrupted system files.
+2. **DISM** – Restores system health with the `/scanhealth`, `/checkhealth`, and `/restorehealth` commands.
+3. **Windows Update Reset** – Stops relevant services, clears the `SoftwareDistribution` and `catroot2` folders, and restarts services.
+4. **Microsoft Store Repair** – Re-registers Store applications to fix many **Windows Store** and **UWP** app issues.
+5. **Privacy Tweaks** – Disables **telemetry**, **Cortana**, and location services for enhanced **privacy**.
+6. **Visual Effects Adjustment** – Disables unnecessary animations and sets performance-based visual settings.
+7. **Optional Bloatware Removal** – Removes common **pre-installed apps** to declutter your system.
 8. **BCD Tweaks** – Includes advanced boot tweaks like:
-   - `bcdedit /set tscsyncpolicy enhanced`  
-   - `bcdedit /deletevalue useplatformtick`  
-   - `bcdedit /set bootmenupolicy legacy`  
-9. **Advanced Registry Edits** –  
-   - **Graphics Drivers Scheduler**: Disable preemption  
-   - **LargeSystemCache** enabled  
-   - **Multimedia Class Scheduler Service** disabled  
-   - **TCP Ack Frequency** optimization  
-   - **Diagnostic Tracking** services disabled  
-   - **Win32PrioritySeparation** set for **gaming performance**  
+   - `bcdedit /set tscsyncpolicy enhanced`
+   - `bcdedit /deletevalue useplatformtick`
+   - `bcdedit /set bootmenupolicy legacy`
+9. **Advanced Registry Edits** – Optimizes several settings including:
+   - **Graphics Driver Scheduler**: Disables preemption.
+   - **Large System Cache**: Enabled for improved performance.
+   - **Multimedia Class Scheduler Service**: Disabled.
+   - **TCP Ack Frequency**: Optimized for smoother networking.
+   - **Diagnostic Tracking**: Services disabled.
+   - **Win32PrioritySeparation**: Set for **gaming performance**.
 
 ---
 
 ## Usage
 1. **Download** or **clone** this repository.
-2. Locate the file `Win11_AllInOneTweaks.bat`.
-3. **Right-click** on the `.bat` file and select **“Run as administrator.”**
-4. Follow on-screen instructions. Some operations (like **SFC** or **DISM**) may take a while.
+2. Locate the file `WinTweaksInteractive.cmd`.
+3. **Right-click** on the `.cmd` file and select **"Run as administrator."**
+4. Follow the on-screen instructions. Some operations (like **SFC** or **DISM**) may take a while to complete.
 5. **Restart** your computer once the script completes to ensure all changes take effect.
 
-> **Tip:** Always **review** the `.bat` file contents. You can **comment out** any lines you don’t want to use.
+> **Tip:** Always **review** the script contents before running. You can **comment out** any lines you do not wish to execute.
 
 ---
 
-## Important Notes & Disclaimers
-- **Backup Your System**: It’s highly recommended to create a **System Restore Point** or a **full system backup** before running the script.
-- **Use at Your Own Risk**: This script applies **advanced tweaks** to your system’s registry and **BCD**. It may result in **unexpected behavior** if not used carefully.
-- **Administrator Privileges**: Must be run with elevated privileges. Otherwise, most tweaks won’t apply, and you may see errors.
-- **Check Compatibility**: Some of these tweaks are specifically for **Windows 11** but may also work on Windows 10.  
-- **Network Adapters**: Certain **TCP/IP** tweaks (e.g., `TcpAckFrequency`) may need manual edits per adapter in the registry.  
-- **No Warranty**: The author(s) of this repository provide no warranty. **You assume all responsibility** for system changes.
+## Important Notes -- Disclaimers
+- **Backup Your System:** It is highly recommended to create a **System Restore Point** or a **full system backup** before running the script.
+- **Use at Your Own Risk:** This script applies **advanced tweaks** to your system's registry and boot configuration. Incorrect modifications may cause **unexpected behavior**.
+- **Administrator Privileges:** The script must be run with elevated privileges. Otherwise, most tweaks will not apply and errors may occur.
+- **Check Compatibility:** While the tweaks are optimized for **Windows 11**, many are also compatible with Windows 10.
+- **Network Adapters:** Some TCP/IP tweaks (such as `TcpAckFrequency`) might require manual adjustments per network adapter.
+- **No Warranty:** This project is provided "as-is" with no warranty. **You assume full responsibility** for any system changes.
 
 ---
 
 ## Screenshots
-> Coming Soon!
+> **Coming Soon!**
 
-We plan to include screenshots of the script running in **Command Prompt** or **PowerShell** and examples of **successful** fixes.
+Screenshots of the script in action (in Command Prompt or PowerShell) and examples of successful fixes will be added soon.
 
 ---
 
 ## Contributing
-We welcome **pull requests** to update, improve, or refine the script. Please ensure:
-1. Your code is **commented** and **tested**.
-2. You **adhere** to best practices to avoid system instability.
-3. Provide a clear description in your **Pull Request**.
+Contributions are welcome! If you have suggestions for improvements or find a bug, please follow these steps:
+1. **Fork** the repository.
+2. Create a new **branch** for your feature or bug fix.
+3. Ensure your code is well-**commented** and **tested**.
+4. Open a **Pull Request** with a clear description of your changes.
 
 ### Issue Reporting
-If you find a bug or want to request a feature:
-1. **Open an Issue** in this repo.  
-2. Provide a **detailed description** of the bug or request.  
-3. Include steps to **reproduce** or expected vs. actual behavior.
+If you encounter issues or have feature requests:
+1. **Open an Issue** in this repository.
+2. Provide a detailed description along with steps to **reproduce** the problem or outline your suggestion.
 
 ---
 
-**Enjoy your optimized Windows 11!**  
+## License
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
-For any questions or feedback, open an issue or reach out on GitHub. We look forward to hearing your **success stories** or **improvements**. 
-
-> **Remember**: If this script helped you, please **star** the repository and **share** with others looking for a comprehensive **Windows 11 fix and tweaks** solution!
 ---
 
-## **Support and Contributions** 🤝  
+**Enjoy your optimized Windows 11!**
+
+If this script helped you, please **star** the repository and **share** it with others looking for a comprehensive **Windows 11 fix and tweaks** solution.
+
+---
+
+## Support and Contributions 🤝
 
 Feel free to contribute or report bugs via GitHub. Pull requests are welcome!  
 If you appreciate this tool, you can support its development by donating here:  
-[**PayPal - Jakub Ambrus**](https://paypal.me/JakubAmbrus)  
-
+[**PayPal - Jakub Ambrus**](https://paypal.me/JakubAmbrus)
 ---
 
 ## **License** 📜  
 
-This project is licensed under the **MIT License**. See `LICENSE` for details.  
+This project is licensed under the **MIT License**. See LICENSE for details.  
 
 ---
 
