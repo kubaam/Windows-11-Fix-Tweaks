@@ -1,524 +1,755 @@
 @echo off
-:: Set a friendly color: Black background (0) with Aqua text (B)
+setlocal EnableExtensions EnableDelayedExpansion
+
+:: =============================================================================
+:: Windows 10-11 Ultimate Optimizer & Hardener (Interactive)
+:: by ambry/kubaam  •  October 2025  •  Single-file, logged, safe-by-default
+:: =============================================================================
+:: DISCLAIMER: This script modifies system settings and registry keys.
+:: - Run as Administrator.
+:: - Actions are logged to a temp logfile.
+:: - Optional: create a System Restore Point and full Registry backup first.
+:: Use at your own risk; test on non-production systems.
+:: =============================================================================
+
+:: ---------- Appearance ----------
 color 0B
+title Windows 10-11 Ultimate Optimizer ^& Hardener (Interactive)
+mode con: cols=112 lines=40 >nul 2>&1
 
-:: Initialize variables
-set AUTO=0
+:: ---------- Globals ----------
+set "AUTO=0"
+set "FORCE_AUTO=0"
+set "SCRIPT_DIR=%~dp0"
+set "BACKUP_DIR=%TEMP%\W_Tweaks_Backups"
+set "LOGFILE=%TEMP%\W_Tweaks_%RANDOM%_%RANDOM%.log"
+if not exist "%BACKUP_DIR%" md "%BACKUP_DIR%" >nul 2>&1
 
-title Windows 10/11 Ultimate Fix and Tweaks (Interactive Version)
-echo ============================================================
-echo         Windows 10/11 Ultimate Fix and Tweaks Interactive
-echo                   by ambry/kubaam
-echo ============================================================
+:: ---------- Banner ----------
+cls
+call :Banner
+echo   Log file: "%LOGFILE%"
+echo =================================================================================================
 echo.
-echo WARNING: This script modifies system settings and registry keys.
-echo It is HIGHLY recommended that you create a system restore point
-echo and back up your registry before running any tweaks.
-echo.
-:: Check for Administrator rights
+
+:: ---------- Admin check ----------
+set "ADMIN_OK=1"
 net session >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] This script must be run as Administrator.
+if errorlevel 1 (
+    fsutil dirty query %systemdrive% >nul 2>&1
+    if errorlevel 1 set "ADMIN_OK=0"
+)
+if "%ADMIN_OK%"=="0" (
+    echo [ERROR] Please run this script as Administrator.
+    echo         Right-click the .bat and choose "Run as administrator".
     pause
-    exit /b
+    exit /b 1
 )
 
-:: Optional: Create a System Restore Point
-echo Would you like to create a System Restore Point? (Y/N)
-set /p rchoice= 
-if /i "%rchoice%"=="Y" (
-    echo [INFO] Creating restore point...
-    powershell -NoProfile -ExecutionPolicy Bypass -command "Checkpoint-Computer -Description 'Win11_UltimateTweaks' -RestorePointType 'MODIFY_SETTINGS'"
-    echo [INFO] Restore point created.
-    timeout /t 2 >nul
+:: ---------- OS/version detection ----------
+set "WIN_BUILD="
+for /f %%B in ('powershell -NoProfile -Command "[Environment]::OSVersion.Version.Build"') do set "WIN_BUILD=%%B"
+if not defined WIN_BUILD (
+    for /f "tokens=3" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentBuildNumber ^| findstr /I "CurrentBuildNumber"') do set "WIN_BUILD=%%a"
+)
+set "IS_WIN11=0"
+if defined WIN_BUILD (
+    if %WIN_BUILD% GEQ 22000 ( set "IS_WIN11=1" )
+    call :Log "Detected OS Build: %WIN_BUILD% (IS_WIN11=%IS_WIN11%)"
+) else (
+    call :Log "WARN: Could not detect OS build."
 )
 
+:: ---------- Optional restore point ----------
+echo Create a System Restore Point? (Y/N)
+set /p "_rp= > "
+if /i "%_rp%"=="Y" (
+    call :CreateRestorePoint
+)
+
+:: ---------- Optional full registry backup ----------
+echo Create a full Registry backup to Documents\RegistryBackup_YYYY-MM-DD_HH-mm-ss ? (Y/N)
+set /p "_rb= > "
+if /i "%_rb%"=="Y" (
+    call :CreateRegBackup
+)
+
+:: =================================== Main Menu ===================================
 :MainMenu
 cls
-echo ============================================================
-echo         Windows 10/11 Tweaks Main Menu
-echo ============================================================
+echo =================================================================================================
+echo                         Windows 10-11 Optimizer ^& Hardener - Main Menu
+echo =================================================================================================
+echo   1. Apply ALL Recommended Tweaks [Auto, no prompts]
+echo   2. System Integrity: DISM + SFC
+echo   3. Reset Windows Update Components
+echo   4. Repair Microsoft Store / Re-register Apps
+echo   5. Performance Tweaks (startup, shutdown, timers, responsiveness)
+echo   6. Visual Effects / UI Tweaks
+echo   7. Privacy ^& Security Hardening
+echo   8. Remove Preinstalled Apps (Debloat - optional)
+echo   9. Common Registry Tweaks (Explorer to This PC, Spotlight off)
+echo  10. Advanced System Tweaks (TSC, MMCSS, LargeSystemCache, ACK freq)
+echo  11. Network Fixes (reset TCP/IP, Winsock, DNS, IP renew)
+echo  12. Additional Advanced Tweaks (Hibernate, Power plan, etc.)
+echo  13. Optional Extras (GodMode, Error Reporting off, AutoPlay off, etc.)
+echo  14. System ^& Network Maintenance Tools
+echo  15. Revert BCDEdit Timer Tweaks to System Defaults
+echo  16. Create System Restore Point
+echo  17. Create Full Registry Backup
+echo  18. Reboot System
+echo  19. Exit
 echo.
-echo 1. Run SFC and DISM (System Integrity)
-echo 2. Reset Windows Update Components
-echo 3. Repair Microsoft Store and Re-register Apps
-echo 4. Apply Performance Tweaks
-echo 5. Adjust Visual Effects and Basic UI Tweaks
-echo 6. Apply Privacy Tweaks
-echo 7. Remove Preinstalled Apps (Optional)
-echo 8. Apply Common Registry Tweaks
-echo 9. Apply Advanced System and Registry Tweaks
-echo 10. Apply Network Fixes
-echo 11. Apply Additional Advanced Tweaks
-echo 12. Apply Even More Optional Tweaks
-echo 13. Reboot System
-echo 14. Exit
-echo.
-set /p option="Enter your choice (1-14): "
+set /p "option=Enter your choice (1-19): "
 
-if "%option%"=="1" goto SFC_DISM
-if "%option%"=="2" goto WindowsUpdateReset
-if "%option%"=="3" goto StoreRepair
-if "%option%"=="4" goto PerformanceTweaks
-if "%option%"=="5" goto VisualUITweaks
-if "%option%"=="6" goto PrivacyTweaks
-if "%option%"=="7" goto RemovePreApps
-if "%option%"=="8" goto CommonRegistryTweaks
-if "%option%"=="9" goto AdvancedTweaks
-if "%option%"=="10" goto NetworkFixes
-if "%option%"=="11" goto AdditionalTweaks
-if "%option%"=="12" goto OptionalTweaks
-if "%option%"=="13" goto RebootSystem
-if "%option%"=="14" goto ExitScript
-echo Invalid option.
+if "%option%"=="1"  goto ApplyAll
+if "%option%"=="2"  goto SFC_DISM
+if "%option%"=="3"  goto WindowsUpdateReset
+if "%option%"=="4"  goto StoreRepair
+if "%option%"=="5"  goto PerformanceTweaks
+if "%option%"=="6"  goto VisualUITweaks
+if "%option%"=="7"  goto HardenPrivacy
+if "%option%"=="8"  goto RemovePreApps
+if "%option%"=="9"  goto CommonRegistryTweaks
+if "%option%"=="10" goto AdvancedTweaks
+if "%option%"=="11" goto NetworkFixes
+if "%option%"=="12" goto AdditionalTweaks
+if "%option%"=="13" goto OptionalTweaks
+if "%option%"=="14" goto MaintenanceMenu
+if "%option%"=="15" goto RevertBCDTweaks
+if "%option%"=="16" goto MakeRestorePoint
+if "%option%"=="17" goto MakeRegBackup
+if "%option%"=="18" goto RebootSystem
+if "%option%"=="19" goto ExitScript
+
+echo [ERR] Invalid option.
 pause
 goto MainMenu
 
+:: ================================= Apply All (Auto) ==============================
+:ApplyAll
+set "FORCE_AUTO=1"
+call :PerformanceTweaks
+call :VisualUITweaks
+call :HardenPrivacy
+call :CommonRegistryTweaks
+call :AdvancedTweaks
+call :NetworkFixes
+call :AdditionalTweaks
+set "FORCE_AUTO=0"
+echo.
+echo [OK] Apply All completed. Review "%LOGFILE%" for details.
+pause
+goto MainMenu
+
+:: ========================== Integrity ===========================================
 :SFC_DISM
 cls
-echo ============================================================
-echo       Running SFC and DISM Checks
-echo ============================================================
-echo.
+echo =================================================================================================
+echo                           System Integrity: DISM + SFC
+echo =================================================================================================
 call :ConfirmMode
 if "%AUTO%"=="0" (
-    call :AskAndRun "Running System File Checker (SFC /scannow)" "sfc /scannow"
-    call :AskAndRun "Running DISM scanhealth" "dism /online /cleanup-image /scanhealth"
-    call :AskAndRun "Running DISM checkhealth" "dism /online /cleanup-image /checkhealth"
-    call :AskAndRun "Running DISM restorehealth" "dism /online /cleanup-image /restorehealth"
+    call :AskAndRun "DISM /ScanHealth"     "dism /online /cleanup-image /scanhealth"
+    call :AskAndRun "DISM /CheckHealth"    "dism /online /cleanup-image /checkhealth"
+    call :AskAndRun "DISM /RestoreHealth"  "dism /online /cleanup-image /restorehealth"
+    call :AskAndRun "SFC /scannow"         "sfc /scannow"
 ) else (
-    echo [INFO] Running SFC /scannow...
-    sfc /scannow
-    echo [INFO] Running DISM scanhealth...
-    dism /online /cleanup-image /scanhealth
-    echo [INFO] Running DISM checkhealth...
-    dism /online /cleanup-image /checkhealth
-    echo [INFO] Running DISM restorehealth...
-    dism /online /cleanup-image /restorehealth
+    call :Run "dism /online /cleanup-image /scanhealth"
+    call :Run "dism /online /cleanup-image /checkhealth"
+    call :Run "dism /online /cleanup-image /restorehealth"
+    call :Run "sfc /scannow"
 )
+echo [OK] Integrity repairs finished.
 pause
 goto MainMenu
 
+:: ========================== Windows Update Reset ================================
 :WindowsUpdateReset
 cls
-echo ============================================================
-echo       Resetting Windows Update Components
-echo ============================================================
+echo =================================================================================================
+echo                          Reset Windows Update Components
+echo =================================================================================================
+echo Stops services, renames caches, restarts services.
 call :ConfirmMode
 if "%AUTO%"=="0" (
-    call :AskAndRun "Stopping Windows Update services" "net stop wuauserv >nul 2>&1 && net stop cryptSvc >nul 2>&1 && net stop bits >nul 2>&1 && net stop msiserver >nul 2>&1"
-    call :AskAndRun "Deleting SoftwareDistribution folder" "rd /s /q %systemroot%\SoftwareDistribution >nul 2>&1"
-    call :AskAndRun "Deleting catroot2 folder" "rd /s /q %systemroot%\system32\catroot2 >nul 2>&1"
-    call :AskAndRun "Restarting Windows Update services" "net start wuauserv >nul 2>&1 && net start cryptSvc >nul 2>&1 && net start bits >nul 2>&1 && net start msiserver >nul 2>&1"
+    call :AskAndRun "Stop WU services" ^
+        "net stop wuauserv ^&^& net stop bits ^&^& net stop cryptSvc ^&^& net stop msiserver ^&^& net stop appidsvc"
 ) else (
-    echo [INFO] Stopping Windows Update services...
-    net stop wuauserv >nul 2>&1
-    net stop cryptSvc >nul 2>&1
-    net stop bits >nul 2>&1
-    net stop msiserver >nul 2>&1
-    echo [INFO] Deleting SoftwareDistribution folder...
-    rd /s /q %systemroot%\SoftwareDistribution >nul 2>&1
-    echo [INFO] Deleting catroot2 folder...
-    rd /s /q %systemroot%\system32\catroot2 >nul 2>&1
-    echo [INFO] Restarting Windows Update services...
-    net start wuauserv >nul 2>&1
-    net start cryptSvc >nul 2>&1
-    net start bits >nul 2>&1
-    net start msiserver >nul 2>&1
+    for %%S in (wuauserv bits cryptSvc msiserver appidsvc) do call :Run "net stop %%S"
 )
+if exist "%SystemRoot%\SoftwareDistribution" (
+    call :Log "Renaming SoftwareDistribution..."
+    ren "%SystemRoot%\SoftwareDistribution" "SoftwareDistribution.bak_%RANDOM%" 1>>"%LOGFILE%" 2>>&1
+)
+if exist "%SystemRoot%\System32\catroot2" (
+    call :Log "Renaming catroot2..."
+    ren "%SystemRoot%\System32\catroot2" "catroot2.bak_%RANDOM%" 1>>"%LOGFILE%" 2>>&1
+)
+if "%AUTO%"=="0" (
+    call :AskAndRun "Start WU services" ^
+        "net start wuauserv ^&^& net start bits ^&^& net start cryptSvc ^&^& net start msiserver ^&^& net start appidsvc"
+) else (
+    for %%S in (wuauserv bits cryptSvc msiserver appidsvc) do call :Run "net start %%S"
+)
+echo [OK] Windows Update components reset.
 pause
 goto MainMenu
 
+:: ========================== Store/App Re-register ===============================
 :StoreRepair
 cls
-echo ============================================================
-echo   Repairing Microsoft Store and Re-registering Apps
-echo ============================================================
+echo =================================================================================================
+echo                  Repair Microsoft Store / Re-register Built-in Apps
+echo =================================================================================================
 call :ConfirmMode
 if "%AUTO%"=="0" (
-    call :AskAndRun "Re-registering Microsoft Store" "powershell -NoProfile -ExecutionPolicy Bypass -command \"Get-AppxPackage *WindowsStore* | Foreach-Object {Add-AppxPackage -DisableDevelopmentMode -Register \\\"$($_.InstallLocation)\\\\AppxManifest.xml\\\"}\""
-    call :AskAndRun "Re-registering apps for all users" "powershell -NoProfile -ExecutionPolicy Bypass -command \"Get-AppxPackage -AllUsers | Foreach-Object {Add-AppxPackage -DisableDevelopmentMode -Register \\\"$($_.InstallLocation)\\\\AppxManifest.xml\\\"}\""
+    call :AskAndRun "Re-register Microsoft Store" ^
+        "powershell -NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage *WindowsStore* ^| ForEach-Object {Add-AppxPackage -DisableDevelopmentMode -Register """"$($_.InstallLocation)\AppxManifest.xml""""}"""
+    call :AskAndRun "Re-register ALL apps for ALL users" ^
+        "powershell -NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -AllUsers ^| ForEach-Object {Add-AppxPackage -DisableDevelopmentMode -Register """"$($_.InstallLocation)\AppxManifest.xml""""}"""
 ) else (
-    echo [INFO] Re-registering Microsoft Store...
-    powershell -NoProfile -ExecutionPolicy Bypass -command "Get-AppxPackage *WindowsStore* | Foreach-Object {Add-AppxPackage -DisableDevelopmentMode -Register \"$($_.InstallLocation)\\AppxManifest.xml\"}"
-    echo [INFO] Re-registering apps for all users...
-    powershell -NoProfile -ExecutionPolicy Bypass -command "Get-AppxPackage -AllUsers | Foreach-Object {Add-AppxPackage -DisableDevelopmentMode -Register \"$($_.InstallLocation)\\AppxManifest.xml\"}"
+    call :Run "powershell -NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage *WindowsStore* ^| ForEach-Object {Add-AppxPackage -DisableDevelopmentMode -Register """"$($_.InstallLocation)\AppxManifest.xml""""}"""
+    call :Run "powershell -NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage -AllUsers ^| ForEach-Object {Add-AppxPackage -DisableDevelopmentMode -Register """"$($_.InstallLocation)\AppxManifest.xml""""}"""
 )
+echo [OK] Re-registration attempted.
 pause
 goto MainMenu
 
+:: ========================== Performance Tweaks ==================================
 :PerformanceTweaks
 cls
-echo ============================================================
-echo         Applying Performance Tweaks
-echo ============================================================
-echo.
+echo =================================================================================================
+echo                        Performance Tweaks (Startup, Timers, UI)
+echo =================================================================================================
 call :ConfirmMode
+
+:: Startup delay and idle wait
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize" "StartupDelayInMSec" REG_DWORD 0 "Disable startup delay"
+if "%IS_WIN11%"=="1" call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize" "WaitForIdleState" REG_DWORD 0 "Disable startup idle wait (W11)"
+
+:: Faster shutdown timeouts
+call :SafeRegAdd "HKCU\Control Panel\Desktop" "AutoEndTasks" REG_SZ 1 "Auto end tasks on shutdown"
+call :SafeRegAdd "HKCU\Control Panel\Desktop" "HungAppTimeout" REG_SZ 2000 "Hung app timeout 2000 ms"
+call :SafeRegAdd "HKCU\Control Panel\Desktop" "WaitToKillAppTimeout" REG_SZ 2000 "WaitToKill app timeout 2000 ms"
+call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control" "WaitToKillServiceTimeout" REG_SZ 2000 "Service kill timeout 2000 ms"
+
+:: Foreground priority and gaming task tuning
+call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" "SystemResponsiveness" REG_DWORD 10 "Foreground priority (10)"
+call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" "GPU Priority" REG_DWORD 8 "Games GPU priority"
+call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games" "Priority" REG_DWORD 6 "Games CPU priority"
+
+:: Faster menus
+call :SafeRegAdd "HKCU\Control Panel\Desktop" "MenuShowDelay" REG_SZ 50 "Menu show delay 50 ms"
+
+:: Disable network throttling
+call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" "NetworkThrottlingIndex" REG_DWORD 4294967295 "Disable network throttling"
+
+:: Optional timer tweaks
 if "%AUTO%"=="0" (
-    :: Use safe registry update for performance-related keys.
-    call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize" "StartupDelayInMSec" REG_DWORD 0 "Disabling startup delay"
-    call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control" "WaitToKillServiceTimeout" REG_SZ 2000 "Speeding up shutdown (WaitToKillServiceTimeout = 2000ms)"
-    call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" "SystemResponsiveness" REG_DWORD 10 "Prioritizing foreground apps (SystemResponsiveness = 10)"
-    call :SafeRegAdd "HKCU\Control Panel\Desktop" "MenuShowDelay" REG_SZ 100 "Reducing menu show delay (MenuShowDelay = 100)"
-    call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" "NetworkThrottlingIndex" REG_DWORD 4294967295 "Disabling network throttling"
-    call :AskAndRun "Optimizing HPET and dynamic tick settings" "bcdedit /deletevalue useplatformclock >nul 2>&1 && bcdedit /set disabledynamictick yes >nul 2>&1"
+    echo.
+    echo Optional: Timer tweaks. Apply? (Y/N)
+    set /p "_tt= > "
+    if /i "%_tt%"=="Y" (
+        call :Run "bcdedit /deletevalue useplatformclock"
+        call :Run "bcdedit /set disabledynamictick yes"
+    )
 ) else (
-    echo [INFO] Disabling startup delay...
-    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize" /v StartupDelayInMSec /t REG_DWORD /d 0 /f >nul
-    echo [INFO] Speeding up shutdown...
-    reg add "HKLM\SYSTEM\CurrentControlSet\Control" /v WaitToKillServiceTimeout /t REG_SZ /d 2000 /f >nul
-    echo [INFO] Prioritizing foreground apps...
-    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v SystemResponsiveness /t REG_DWORD /d 10 /f >nul
-    echo [INFO] Reducing menu show delay...
-    reg add "HKCU\Control Panel\Desktop" /v MenuShowDelay /t REG_SZ /d 100 /f >nul
-    echo [INFO] Disabling network throttling...
-    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v NetworkThrottlingIndex /t REG_DWORD /d 4294967295 /f >nul
-    echo [INFO] Optimizing HPET and dynamic tick settings...
-    bcdedit /deletevalue useplatformclock >nul 2>&1
-    bcdedit /set disabledynamictick yes >nul 2>&1
+    call :Run "bcdedit /deletevalue useplatformclock"
+    call :Run "bcdedit /set disabledynamictick yes"
 )
-echo [INFO] Performance tweaks applied.
+echo [OK] Performance tweaks completed.
 pause
 goto MainMenu
 
+:: ========================== Visual Effects / UI =================================
 :VisualUITweaks
 cls
-echo ============================================================
-echo   Adjusting Visual Effects and Basic UI Tweaks
-echo ============================================================
+echo =================================================================================================
+echo                               Visual Effects / UI Tweaks
+echo =================================================================================================
 call :ConfirmMode
+:: Best performance base
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" "VisualFXSetting" REG_DWORD 2 "Best performance visual effects"
+
+:: Optional refined mask
 if "%AUTO%"=="0" (
-    call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" "VisualFXSetting" REG_DWORD 2 "Setting VisualFXSetting to 2 (best performance)"
-    echo [WARNING] Adjusting UserPreferencesMask may cause visual glitches.
-    call :SafeRegAdd "HKCU\Control Panel\Desktop" "UserPreferencesMask" REG_BINARY 90120000 "Adjusting UserPreferencesMask for optimized UI"
+    echo.
+    echo Optional: Apply refined UserPreferencesMask. Apply? (Y/N)
+    set /p "_mask= > "
+    if /i "%_mask%"=="Y" (
+        call :SafeRegAdd "HKCU\Control Panel\Desktop" "UserPreferencesMask" REG_BINARY 9012038010000000 "Refined UI performance mask"
+    )
 ) else (
-    echo [INFO] Setting VisualFXSetting to 2...
-    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v VisualFXSetting /t REG_DWORD /d 2 /f >nul
-    echo [WARNING] Adjusting UserPreferencesMask may cause visual glitches.
-    echo [INFO] Adjusting UserPreferencesMask...
-    reg add "HKCU\Control Panel\Desktop" /v UserPreferencesMask /t REG_BINARY /d 90120000 /f >nul
+    call :SafeRegAdd "HKCU\Control Panel\Desktop" "UserPreferencesMask" REG_BINARY 9012038010000000 "Refined UI performance mask"
 )
-echo [INFO] Visual and UI tweaks applied.
+echo [OK] Visual/UI tweaks applied.
 pause
 goto MainMenu
 
-:PrivacyTweaks
+:: ========================== Privacy & Security ==================================
+:HardenPrivacy
 cls
-echo ============================================================
-echo            Applying Privacy Tweaks
-echo ============================================================
+echo =================================================================================================
+echo                             Privacy ^& Security Hardening
+echo =================================================================================================
 call :ConfirmMode
-if "%AUTO%"=="0" (
-    call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" "AllowTelemetry" REG_DWORD 0 "Disabling Telemetry"
-    call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" "AllowCortana" REG_DWORD 0 "Disabling Cortana"
-    call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration" "Status" REG_DWORD 0 "Disabling system-wide location service"
-) else (
-    echo [INFO] Disabling Telemetry...
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" /v AllowTelemetry /t REG_DWORD /d 0 /f >nul
-    echo [INFO] Disabling Cortana...
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" /v AllowCortana /t REG_DWORD /d 0 /f >nul
-    echo [INFO] Disabling system-wide location service...
-    reg add "HKLM\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration" /v Status /t REG_DWORD /d 0 /f >nul
-)
-echo [INFO] Privacy tweaks applied.
+
+:: Telemetry minimum
+call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection" "AllowTelemetry" REG_DWORD 0 "Disable diagnostic telemetry (policy)"
+
+:: Cortana + web search off
+call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" "AllowCortana" REG_DWORD 0 "Disable Cortana (policy)"
+call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search" "DisableWebSearch" REG_DWORD 1 "Disable web search in Start"
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Search" "BingSearchEnabled" REG_DWORD 0 "Disable Bing in Search"
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Search" "AllowSearchToUseLocation" REG_DWORD 0 "Search no location"
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Search" "CortanaConsent" REG_DWORD 0 "Cortana consent off"
+
+:: Location service off
+call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration" "Status" REG_DWORD 0 "Disable system-wide location"
+
+:: Consumer features and tips off
+call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableWindowsConsumerFeatures" REG_DWORD 1 "Disable suggested apps"
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" "SubscribedContent-338389Enabled" REG_DWORD 0 "Tips off"
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" "SystemPaneSuggestionsEnabled" REG_DWORD 0 "Suggestions off"
+
+:: Disable telemetry services if present
+call :Run "sc config DiagTrack start= disabled"
+call :Run "sc stop DiagTrack"
+call :Run "sc config dmwappushservice start= disabled"
+call :Run "sc stop dmwappushservice"
+
+echo [OK] Privacy hardening applied.
 pause
 goto MainMenu
 
+:: ========================== Debloat (Optional) ==================================
 :RemovePreApps
 cls
-echo ============================================================
-echo         Remove Preinstalled Apps (Optional)
-echo ============================================================
-echo This section can remove some preinstalled apps (e.g., Xbox, Bing News, etc.).
-echo WARNING: These commands remove apps permanently.
-echo Do you want to proceed? (Y/N)
-set /p removeapps=
-if /i not "%removeapps%"=="Y" (
-    echo [INFO] Skipping removal of preinstalled apps.
+echo =================================================================================================
+echo                                Remove Preinstalled Apps
+echo =================================================================================================
+echo WARNING: This attempts removal for ALL users. Some apps may return after feature updates.
+echo Proceed? (Y/N)
+set /p "_rm= > "
+if /i not "%_rm%"=="Y" (
+    echo [INFO] Skipping app removal.
     pause
     goto MainMenu
 )
+
 call :ConfirmMode
-if "%AUTO%"=="0" (
-    call :AskAndRun "Removing Xbox app" "powershell -NoProfile -ExecutionPolicy Bypass -command \"Get-AppxPackage *xboxapp* | Remove-AppxPackage\""
-    call :AskAndRun "Removing Bing News" "powershell -NoProfile -ExecutionPolicy Bypass -command \"Get-AppxPackage *bingnews* | Remove-AppxPackage\""
-    call :AskAndRun "Removing Bing Weather" "powershell -NoProfile -ExecutionPolicy Bypass -command \"Get-AppxPackage *bingweather* | Remove-AppxPackage\""
-    call :AskAndRun "Removing Zune Video" "powershell -NoProfile -ExecutionPolicy Bypass -command \"Get-AppxPackage *zunevideo* | Remove-AppxPackage\""
-    call :AskAndRun "Removing Solitaire Collection" "powershell -NoProfile -ExecutionPolicy Bypass -command \"Get-AppxPackage *solitairecollection* | Remove-AppxPackage\""
-) else (
-    echo [INFO] Removing preinstalled apps...
-    powershell -NoProfile -ExecutionPolicy Bypass -command "Get-AppxPackage *xboxapp* | Remove-AppxPackage"
-    powershell -NoProfile -ExecutionPolicy Bypass -command "Get-AppxPackage *bingnews* | Remove-AppxPackage"
-    powershell -NoProfile -ExecutionPolicy Bypass -command "Get-AppxPackage *bingweather* | Remove-AppxPackage"
-    powershell -NoProfile -ExecutionPolicy Bypass -command "Get-AppxPackage *zunevideo* | Remove-AppxPackage"
-    powershell -NoProfile -ExecutionPolicy Bypass -command "Get-AppxPackage *solitairecollection* | Remove-AppxPackage"
-)
-echo [INFO] Preinstalled apps removal executed.
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+"& {$B=@('*3DBuilder*','*3DViewer*','*bing*','*GetHelp*','*Getstarted*','*Messaging*','*MixedReality.Portal*','*Office.Hub*','*OneConnect*','*people*','*SkypeApp*','*solitaire*','*Sway*','*Wallet*','*YourPhone*','*ZuneMusic*','*ZuneVideo*','*Xbox*');"^
+"foreach($a in $B){Write-Host 'Removing' $a; Get-AppxPackage -AllUsers $a | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue;"^
+"Get-AppxProvisionedPackage -Online | Where-Object { $_.PackageName -like $a } | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue;}}" ^
+1>>"%LOGFILE%" 2>>&1
+if errorlevel 1 (echo [WARN] Some removals failed. See log.) else echo [OK] Debloat complete.
 pause
 goto MainMenu
 
+:: ========================== Common Registry Tweaks ==============================
 :CommonRegistryTweaks
 cls
-echo ============================================================
-echo         Applying Common Registry Tweaks
-echo ============================================================
+echo =================================================================================================
+echo                                  Common Registry Tweaks
+echo =================================================================================================
 call :ConfirmMode
-:: (Consider backing up affected registry keys before applying these tweaks)
-if "%AUTO%"=="0" (
-    call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableConsumerFeatures" REG_DWORD 1 "Disabling Lock Screen Ads and Spotlight (DisableConsumerFeatures)"
-    call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableSoftLanding" REG_DWORD 1 "Disabling Lock Screen Ads and Spotlight (DisableSoftLanding)"
-    call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" "LaunchTo" REG_DWORD 1 "Setting File Explorer to open 'This PC' by default"
-) else (
-    echo [INFO] Disabling Lock Screen Ads and Spotlight...
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" /v DisableConsumerFeatures /t REG_DWORD /d 1 /f >nul
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" /v DisableSoftLanding /t REG_DWORD /d 1 /f >nul
-    echo [INFO] Setting File Explorer to open 'This PC' by default...
-    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v LaunchTo /t REG_DWORD /d 1 /f >nul
-)
-echo [INFO] Common registry tweaks applied.
+call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableConsumerFeatures" REG_DWORD 1 "Disable Consumer features"
+call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableSoftLanding"     REG_DWORD 1 "Disable SoftLanding"
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" "LaunchTo" REG_DWORD 1 "Explorer opens 'This PC'"
+echo [OK] Common tweaks applied.
 pause
 goto MainMenu
 
+:: ========================== Advanced System Tweaks ==============================
 :AdvancedTweaks
 cls
-echo ============================================================
-echo    Applying Advanced System and Registry Tweaks
-echo ============================================================
+echo =================================================================================================
+echo                               Advanced System / Registry Tweaks
+echo =================================================================================================
 call :ConfirmMode
-if "%AUTO%"=="0" (
-    call :AskAndRun "Setting TSC Synchronization Policy to enhanced" "bcdedit /set tscsyncpolicy enhanced >nul 2>&1"
-    call :AskAndRun "Removing UsePlatformTick value" "bcdedit /deletevalue useplatformtick >nul 2>&1"
-    call :AskAndRun "Setting Boot Menu Policy to legacy" "bcdedit /set bootmenupolicy legacy >nul 2>&1"
-    call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers\Scheduler" "EnablePreemption" REG_DWORD 0 "Disabling Graphics Driver Preemption"
-    call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" "LargeSystemCache" REG_DWORD 1 "Enabling Large System Cache"
-    call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Services\MMCSS" "Start" REG_DWORD 4 "Disabling Multimedia Class Scheduler (MMCSS)"
-    call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" "TcpAckFrequency" REG_DWORD 1 "Optimizing TCP Ack Frequency"
-    call :AskAndRun "Disabling Diagnostic Tracking and dmwappushservice" "sc config DiagTrack start= disabled >nul 2>&1 && sc config dmwappushservice start= disabled >nul 2>&1"
-    call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" "Win32PrioritySeparation" REG_DWORD 26 "Adjusting Win32PrioritySeparation for gaming"
-) else (
-    echo [INFO] Setting TSC Synchronization Policy to enhanced...
-    bcdedit /set tscsyncpolicy enhanced >nul 2>&1
-    echo [INFO] Removing UsePlatformTick value...
-    bcdedit /deletevalue useplatformtick >nul 2>&1
-    echo [INFO] Setting Boot Menu Policy to legacy...
-    bcdedit /set bootmenupolicy legacy >nul 2>&1
-    echo [INFO] Disabling Graphics Driver Preemption...
-    reg add "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers\Scheduler" /v EnablePreemption /t REG_DWORD /d 0 /f >nul
-    echo [INFO] Enabling Large System Cache...
-    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v LargeSystemCache /t REG_DWORD /d 1 /f >nul
-    echo [INFO] Disabling Multimedia Class Scheduler (MMCSS)...
-    reg add "HKLM\SYSTEM\CurrentControlSet\Services\MMCSS" /v Start /t REG_DWORD /d 4 /f >nul
-    echo [INFO] Optimizing TCP Ack Frequency...
-    reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" /v TcpAckFrequency /t REG_DWORD /d 1 /f >nul
-    echo [INFO] Disabling Diagnostic Tracking and dmwappushservice...
-    sc config DiagTrack start= disabled >nul 2>&1
-    sc config dmwappushservice start= disabled >nul 2>&1
-    echo [INFO] Adjusting Win32PrioritySeparation for gaming...
-    reg add "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" /v Win32PrioritySeparation /t REG_DWORD /d 26 /f >nul
+
+:: CPU timers and boot menu
+call :AskAndRun "Set tscsyncpolicy=enhanced" "bcdedit /set tscsyncpolicy enhanced"
+call :AskAndRun "Delete useplatformtick (default)" "bcdedit /deletevalue useplatformtick"
+call :AskAndRun "Boot menu policy legacy (F8 classic)" "bcdedit /set bootmenupolicy legacy"
+
+:: Graphics driver preemption toggle
+call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers\Scheduler" "EnablePreemption" REG_DWORD 0 "Disable graphics preemption"
+
+:: Large system cache
+call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" "LargeSystemCache" REG_DWORD 1 "Enable LargeSystemCache"
+
+:: Disable MMCSS (advanced)
+call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Services\MMCSS" "Start" REG_DWORD 4 "Disable MMCSS service"
+
+:: Per-NIC TcpAckFrequency=1
+echo.
+echo Applying TcpAckFrequency=1 per network interface...
+for /f "tokens=*" %%K in ('reg query "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" ^| findstr /R /C:"HKEY_LOCAL_MACHINE"') do (
+    call :Log "Setting TcpAckFrequency=1 on: %%K"
+    reg add "%%K" /v TcpAckFrequency /t REG_DWORD /d 1 /f 1>>"%LOGFILE%" 2>>&1
 )
-echo [INFO] Advanced tweaks applied.
+
+:: Priority separation
+call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" "Win32PrioritySeparation" REG_DWORD 26 "Favor foreground apps"
+
+echo [OK] Advanced tweaks applied.
 pause
 goto MainMenu
 
+:: ========================== Network Fixes =======================================
 :NetworkFixes
 cls
-echo ============================================================
-echo         Applying Network Fixes
-echo ============================================================
-echo WARNING: Network settings will be reset and connectivity may be temporarily lost.
+echo =================================================================================================
+echo                                       Network Fixes
+echo =================================================================================================
+echo WARNING: This resets TCP/IP, Winsock, flushes DNS, and renews IP. You may lose connectivity briefly.
 call :ConfirmMode
 if "%AUTO%"=="0" (
-    call :AskAndRun "Resetting TCP/IP stack" "netsh int ip reset >nul"
-    call :AskAndRun "Flushing DNS" "ipconfig /flushdns >nul"
-    call :AskAndRun "Resetting Winsock" "netsh winsock reset >nul"
-    call :AskAndRun "Releasing IP address" "ipconfig /release >nul"
-    call :AskAndRun "Renewing IP address" "ipconfig /renew >nul"
+    call :AskAndRun "Reset TCP/IP"   "netsh int ip reset"
+    call :AskAndRun "Flush DNS"      "ipconfig /flushdns"
+    call :AskAndRun "Reset Winsock"  "netsh winsock reset"
+    call :AskAndRun "Release IP"     "ipconfig /release"
+    call :AskAndRun "Renew IP"       "ipconfig /renew"
 ) else (
-    echo [INFO] Resetting TCP/IP stack...
-    netsh int ip reset >nul
-    echo [INFO] Flushing DNS...
-    ipconfig /flushdns >nul
-    echo [INFO] Resetting Winsock...
-    netsh winsock reset >nul
-    echo [INFO] Releasing IP address...
-    ipconfig /release >nul
-    echo [INFO] Renewing IP address...
-    ipconfig /renew >nul
+    call :Run "netsh int ip reset"
+    call :Run "ipconfig /flushdns"
+    call :Run "netsh winsock reset"
+    call :Run "ipconfig /release"
+    call :Run "ipconfig /renew"
 )
-echo [INFO] Network fixes applied.
+echo [OK] Network fixes executed.
 pause
 goto MainMenu
 
+:: ========================== Additional Advanced Tweaks ==========================
 :AdditionalTweaks
 cls
-echo ============================================================
-echo       Applying Additional Advanced Tweaks
-echo ============================================================
+echo =================================================================================================
+echo                              Additional Advanced Tweaks
+echo =================================================================================================
 call :ConfirmMode
+
+:: Hibernate off
+call :AskAndRun "Disable Hibernation" "powercfg /h off"
+
+:: Ultimate Performance plan if available
+call :AskAndRun "Enable Ultimate Performance power plan" ^
+    "powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 ^>nul 2^>^&1 ^& powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61"
+
+:: Optional: Disable IPv6 on all interfaces
 if "%AUTO%"=="0" (
-    call :AskAndRun "Disabling Hibernation" "powercfg /h off"
-    call :AskAndRun "Enabling Ultimate Performance Power Plan" "powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1 && powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1"
-    call :AskAndRun "Disabling IPv6 on all interfaces" "for /F \"skip=3 tokens=1,*\" %%A in ('netsh interface ipv6 show interfaces') do (netsh interface ipv6 set interface \"%%B\" admin=disabled >nul 2>&1)"
-    call :AskAndRun "Disabling Windows Search Indexing" "sc config WSearch start= disabled >nul 2>&1 && net stop WSearch >nul 2>&1"
-    call :AskAndRun "Uninstalling OneDrive" "taskkill /f /im OneDrive.exe >nul 2>&1 && %SystemRoot%\SysWOW64\OneDriveSetup.exe /uninstall >nul 2>&1"
-    call :AskAndRun "Disabling Action Center and Notification Center" "reg add \"HKCU\Software\Policies\Microsoft\Windows\Explorer\" /v DisableNotificationCenter /t REG_DWORD /d 1 /f >nul"
-    call :AskAndRun "Clearing Temp and Prefetch folders" "del /f /s /q \"%temp%\*.*\" >nul 2>&1 && del /f /s /q \"%SystemRoot%\Temp\*.*\" >nul 2>&1 && del /f /s /q \"%SystemRoot%\Prefetch\*.*\" >nul 2>&1"
-    call :AskAndRun "Clearing ALL Event Logs" "for /F \"tokens=*\" %%G in ('wevtutil el') do (wevtutil cl \"%%G\" >nul 2>&1)"
-) else (
-    echo [INFO] Disabling Hibernation...
-    powercfg /h off
-    echo [INFO] Enabling Ultimate Performance Power Plan...
-    powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1
-    powercfg /setactive e9a42b02-d5df-448d-aa00-03f14749eb61 >nul 2>&1
-    echo [INFO] Disabling IPv6 on all interfaces...
-    for /F "skip=3 tokens=1,*" %%A in ('netsh interface ipv6 show interfaces') do (
-        netsh interface ipv6 set interface "%%B" admin=disabled >nul 2>&1
+    echo.
+    echo Optional: Disable IPv6 on all network interfaces? (Y/N)
+    set /p "_ipv6= > "
+    if /i "%_ipv6%"=="Y" (
+        for /f "tokens=3,* delims= " %%A in ('netsh interface ipv6 show interfaces ^| findstr /R "^\ *[0-9]"') do (
+            call :Run "netsh interface ipv6 set interface ""%%B"" admin=disabled"
+        )
     )
-    echo [INFO] Disabling Windows Search Indexing...
-    sc config WSearch start= disabled >nul 2>&1
-    net stop WSearch >nul 2>&1
-    echo [INFO] Uninstalling OneDrive...
-    taskkill /f /im OneDrive.exe >nul 2>&1
-    %SystemRoot%\SysWOW64\OneDriveSetup.exe /uninstall >nul 2>&1
-    echo [INFO] Disabling Action Center and Notification Center...
-    reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v DisableNotificationCenter /t REG_DWORD /d 1 /f >nul
-    echo [INFO] Clearing Temp and Prefetch folders...
-    del /f /s /q "%temp%\*.*" >nul 2>&1
-    del /f /s /q "%SystemRoot%\Temp\*.*" >nul 2>&1
-    del /f /s /q "%SystemRoot%\Prefetch\*.*" >nul 2>&1
-    echo [INFO] Clearing ALL Event Logs...
-    for /F "tokens=*" %%G in ('wevtutil el') do (wevtutil cl "%%G" >nul 2>&1)
 )
-echo [INFO] Additional advanced tweaks applied.
+
+:: Optional: Disable Windows Search Indexing
+if "%AUTO%"=="0" (
+    echo.
+    echo Optional: Disable Windows Search Indexing? (Y/N)
+    set /p "_ws= > "
+    if /i "%_ws%"=="Y" (
+        call :Run "sc config WSearch start= disabled"
+        call :Run "net stop WSearch"
+    )
+)
+
+:: Uninstall OneDrive
+call :AskAndRun "Uninstall OneDrive" ^
+    "taskkill /f /im OneDrive.exe ^>nul 2^>^&1 ^& if exist ""%SystemRoot%\SysWOW64\OneDriveSetup.exe"" (""%SystemRoot%\SysWOW64\OneDriveSetup.exe"" /uninstall) else if exist ""%SystemRoot%\System32\OneDriveSetup.exe"" (""%SystemRoot%\System32\OneDriveSetup.exe"" /uninstall)"
+
+:: Disable Notification Center
+call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer" "DisableNotificationCenter" REG_DWORD 1 "Disable Action Center (HKLM)"
+call :SafeRegAdd "HKCU\Software\Policies\Microsoft\Windows\Explorer"  "DisableNotificationCenter" REG_DWORD 1 "Disable Action Center (HKCU)"
+
+:: Optional cleanup
+if "%AUTO%"=="0" (
+    echo.
+    echo Optional: Clear TEMP, Windows\Temp, and Prefetch? (Y/N)
+    set /p "_cl= > "
+    if /i "%_cl%"=="Y" (
+        call :Run "del /f /s /q ""%temp%\*.*"""
+        call :Run "del /f /s /q ""%SystemRoot%\Temp\*.*"""
+        call :Run "del /f /s /q ""%SystemRoot%\Prefetch\*.*"""
+    )
+)
+
+:: Optional clear Event Logs
+if "%AUTO%"=="0" (
+    echo.
+    echo Optional: Clear ALL Event Viewer logs? (Y/N)
+    set /p "_ev= > "
+    if /i "%_ev%"=="Y" (
+       for /F "tokens=*" %%G in ('wevtutil el') do (
+            call :Run "wevtutil cl ""%%G"""
+       )
+    )
+)
+
+echo [OK] Additional tweaks completed.
 pause
 goto MainMenu
 
+:: ========================== Optional Extras =====================================
 :OptionalTweaks
 cls
-echo ============================================================
-echo         Applying Even More Optional Tweaks
-echo ============================================================
+echo =================================================================================================
+echo                                       Optional Extras
+echo =================================================================================================
 call :ConfirmMode
-if "%AUTO%"=="0" (
-    call :AskAndRun "Removing '3D Objects' folder from This PC" "reg delete \"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}\" /f >nul 2>nul"
-    call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\NonEnum" "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}" REG_DWORD 1 "Removing 'Network' icon from Navigation Pane"
-    call :AskAndRun "Hiding OneDrive from Navigation Pane" "reg add \"HKCR\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\ShellFolder\" /v Attributes /t REG_DWORD /d 0x00000000 /f >nul && reg add \"HKCR\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\ShellFolder\" /v \"System.IsPinnedToNameSpaceTree\" /t REG_DWORD /d 0 /f >nul"
-    call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting" "Disabled" REG_DWORD 1 "Disabling Windows Error Reporting"
-    call :SafeRegAdd "HKCU\Control Panel\Sound" "Beep" REG_SZ no "Disabling system beep on errors"
-    call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" "NoDriveTypeAutoRun" REG_DWORD 255 "Disabling AutoPlay for all drives"
-    call :AskAndRun "Creating 'God Mode' folder on Desktop" "if not exist \"%USERPROFILE%\Desktop\GodMode.{ED7BA470-8E54-465E-825C-99712043E01C}\" md \"%USERPROFILE%\Desktop\GodMode.{ED7BA470-8E54-465E-825C-99712043E01C}\""
-    call :SafeRegAdd "HKCU\Control Panel\Accessibility\StickyKeys" "Flags" REG_SZ 506 "Disabling Sticky/Filter/Toggle Keys popups (StickyKeys)"
-    call :SafeRegAdd "HKCU\Control Panel\Accessibility\Keyboard Response" "Flags" REG_SZ 122 "Disabling Sticky/Filter/Toggle Keys popups (Keyboard Response)"
-    call :SafeRegAdd "HKCU\Control Panel\Accessibility\ToggleKeys" "Flags" REG_SZ 58 "Disabling Sticky/Filter/Toggle Keys popups (ToggleKeys)"
-) else (
-    echo [INFO] Removing '3D Objects' folder...
-    reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}" /f >nul 2>nul
-    echo [INFO] Removing 'Network' icon from Navigation Pane...
-    reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\NonEnum" /v "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}" /t REG_DWORD /d 1 /f >nul
-    echo [INFO] Hiding OneDrive from Navigation Pane...
-    reg add "HKCR\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\ShellFolder" /v Attributes /t REG_DWORD /d 0x00000000 /f >nul
-    reg add "HKCR\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\ShellFolder" /v "System.IsPinnedToNameSpaceTree" /t REG_DWORD /d 0 /f >nul
-    echo [INFO] Disabling Windows Error Reporting...
-    reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting" /v Disabled /t REG_DWORD /d 1 /f >nul
-    echo [INFO] Disabling system beep on errors...
-    reg add "HKCU\Control Panel\Sound" /v Beep /t REG_SZ /d no /f >nul
-    echo [INFO] Disabling AutoPlay for all drives...
-    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoDriveTypeAutoRun /t REG_DWORD /d 255 /f >nul
-    echo [INFO] Creating 'God Mode' folder on Desktop...
-    if not exist "%USERPROFILE%\Desktop\GodMode.{ED7BA470-8E54-465E-825C-99712043E01C}" md "%USERPROFILE%\Desktop\GodMode.{ED7BA470-8E54-465E-825C-99712043E01C}"
-    echo [INFO] Disabling Sticky/Filter/Toggle Keys popups...
-    reg add "HKCU\Control Panel\Accessibility\StickyKeys" /v Flags /t REG_SZ /d 506 /f >nul
-    reg add "HKCU\Control Panel\Accessibility\Keyboard Response" /v Flags /t REG_SZ /d 122 /f >nul
-    reg add "HKCU\Control Panel\Accessibility\ToggleKeys" /v Flags /t REG_SZ /d 58 /f >nul
-)
-echo [INFO] Optional tweaks applied.
+
+call :AskAndRun "Remove '3D Objects' from This PC" ^
+    "reg delete ""HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"" /f"
+
+call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\NonEnum" "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}" REG_DWORD 1 "Hide 'Network' in nav pane"
+
+call :AskAndRun "Hide OneDrive from Explorer nav pane" ^
+    "reg add ""HKCR\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\ShellFolder"" /v Attributes /t REG_DWORD /d 0x00000000 /f ^& reg add ""HKCR\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\ShellFolder"" /v ""System.IsPinnedToNameSpaceTree"" /t REG_DWORD /d 0 /f"
+
+call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting" "Disabled" REG_DWORD 1 "Disable Windows Error Reporting (policy)"
+call :SafeRegAdd "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting"         "Disabled" REG_DWORD 1 "Disable Windows Error Reporting"
+call :SafeRegAdd "HKCU\Control Panel\Sound" "Beep" REG_SZ no "Disable system beep"
+call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" "NoDriveTypeAutoRun" REG_DWORD 255 "Disable AutoPlay for all drives"
+
+call :AskAndRun "Create GodMode folder on Desktop" ^
+    "if not exist ""%USERPROFILE%\Desktop\GodMode.{ED7BA470-8E54-465E-825C-99712043E01C}"" md ""%USERPROFILE%\Desktop\GodMode.{ED7BA470-8E54-465E-825C-99712043E01C}"""
+
+call :SafeRegAdd "HKCU\Control Panel\Accessibility\StickyKeys"        "Flags" REG_SZ 506 "Disable StickyKeys popup"
+call :SafeRegAdd "HKCU\Control Panel\Accessibility\Keyboard Response" "Flags" REG_SZ 122 "Disable FilterKeys popup"
+call :SafeRegAdd "HKCU\Control Panel\Accessibility\ToggleKeys"        "Flags" REG_SZ 58  "Disable ToggleKeys popup"
+
+echo [OK] Optional extras applied.
 pause
 goto MainMenu
 
+:: ========================== Maintenance Submenu =================================
+:MaintenanceMenu
+cls
+echo =================================================================================================
+echo                               System ^& Network Maintenance
+echo =================================================================================================
+echo   1. Clear Temporary Files and Prefetch Cache
+echo   2. Reset Network Stack (flush DNS, release/renew, winsock, ip reset)
+echo.
+echo   0. Back to Main Menu
+echo =================================================================================================
+choice /c 120 /n /m "Enter your choice: "
+if errorlevel 3 goto MainMenu
+if errorlevel 2 goto Tweak_NetworkReset
+if errorlevel 1 goto Tweak_SystemCleanup
+goto MainMenu
+
+:Tweak_SystemCleanup
+cls
+echo [INFO] Clearing temporary file caches...
+call :Run "del /f /s /q ""%temp%\*.*"""
+call :Run "del /f /s /q ""%SystemRoot%\Temp\*.*"""
+call :Run "del /f /s /q ""%SystemRoot%\Prefetch\*.*"""
+echo [OK] System caches cleared.
+pause
+goto MaintenanceMenu
+
+:Tweak_NetworkReset
+cls
+echo =================================================================================================
+echo WARNING: This will reset all network settings, including static IPs and saved Wi-Fi passwords.
+echo =================================================================================================
+choice /c YN /m "Continue with full network reset? (Y/N): "
+if errorlevel 2 goto MaintenanceMenu
+call :Run "ipconfig /flushdns"
+call :Run "ipconfig /release"
+call :Run "ipconfig /renew"
+call :Run "netsh winsock reset"
+call :Run "netsh int ip reset"
+echo [OK] Network stack has been reset. A reboot is recommended.
+pause
+goto MaintenanceMenu
+
+:: ========================== Revert BCDEdit Tweaks ===============================
+:RevertBCDTweaks
+cls
+echo =================================================================================================
+echo                         Reverting BCDEdit Timer Tweaks to Defaults
+echo =================================================================================================
+call :Run "bcdedit /deletevalue useplatformclock"
+call :Run "bcdedit /deletevalue disabledynamictick"
+call :Run "bcdedit /deletevalue tscsyncpolicy"
+call :Run "bcdedit /deletevalue useplatformtick"
+echo [OK] Default timer settings restored. A reboot is recommended.
+pause
+goto MainMenu
+
+:: ========================== On-demand helpers ===================================
+:MakeRestorePoint
+call :CreateRestorePoint
+pause
+goto MainMenu
+
+:MakeRegBackup
+call :CreateRegBackup
+pause
+goto MainMenu
+
+:: ========================== Reboot / Exit =======================================
 :RebootSystem
 cls
-echo ============================================================
-echo             Rebooting System
-echo ============================================================
-echo Your system will reboot in 5 seconds...
+echo =================================================================================================
+echo                                      Reboot System
+echo =================================================================================================
+echo System will reboot in 5 seconds...
+call :Log "Initiating reboot..."
 timeout /t 5 >nul
 shutdown /r /t 0
 goto ExitScript
 
 :ExitScript
 echo.
-echo Exiting script. Thank you for using Windows 10/11 Ultimate Fix and Tweaks.
-echo Developed by ambry/kubaam.
+echo Exiting. Log saved to: "%LOGFILE%"
+echo Thanks for using the Windows 10-11 Ultimate Optimizer ^& Hardener.
 pause
 exit /b
 
-:: ------------------------------------------------------
-:: Subroutine: ConfirmMode
-:: Asks if the user wants to apply all tweaks automatically (A)
-:: or confirm each tweak individually (I).
+:: ========================== Subroutines =========================================
+
+:Banner
+rem Prints banner safely from embedded data lines (#>) at the bottom of this file.
+setlocal DisableDelayedExpansion
+for /f "usebackq delims=" %%# in (`findstr /b "#>" "%~f0"`) do (
+    set "L=%%#"
+    setlocal EnableDelayedExpansion
+    echo(!L:#> =!
+    endlocal
+)
+endlocal & goto :EOF
+
 :ConfirmMode
-echo.
-echo Would you like to apply all tweaks in this category automatically (A)
-echo or confirm each tweak individually (I)?
-choice /C AI /M "Choose [A/I]: "
-if errorlevel 2 (
-    set "AUTO=0"
-) else (
+if "%FORCE_AUTO%"=="1" (
     set "AUTO=1"
+    call :Log "Mode: Automatic (forced)"
+    goto :EOF
 )
-goto :EOF
-
-:: ------------------------------------------------------
-:: Subroutine: AskAndRun
-:: %1 = Tweak description
-:: %2 = Command to execute
-:AskAndRun
-echo [INFO] Starting: %~1
-if "%AUTO%"=="0" (
-    set /p confirm="Apply this tweak? (Y/N): "
-    if /i not "%confirm%"=="Y" goto :AskAndRunEnd
-) else (
-    echo [INFO] Automatically applying tweak: %~1
-)
-setlocal enabledelayedexpansion
-set "TWEAK_CMD=%~2"
-echo [INFO] Executing: !TWEAK_CMD!
-cmd /s /c !TWEAK_CMD!
-if errorlevel 1 echo [WARNING] Command failed: !TWEAK_CMD!
-endlocal
-:AskAndRunEnd
-goto :EOF
-
-:: ------------------------------------------------------
-:: Subroutine: SafeRegAdd
-:: Safely updates a registry value by first querying the current setting.
-:: Parameters:
-::   %1 = Registry key (e.g., HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize)
-::   %2 = Value name (e.g., StartupDelayInMSec)
-::   %3 = Type (e.g., REG_DWORD, REG_SZ, REG_BINARY)
-::   %4 = Data to set (e.g., 0, 2000, 90120000)
-::   %5 = Description of the tweak
-:SafeRegAdd
 echo.
-echo [INFO] %~5
-echo [INFO] Querying current value of %~1\%~2 ...
-reg query "%~1" /v %~2 >temp_reg.txt 2>nul
-if errorlevel 1 (
-    echo [INFO] Value does not exist; it will be created.
-) else (
-    for /f "tokens=2,*" %%A in ('findstr /r /c:"%~2" temp_reg.txt') do (
-        set "CURRENT=%%B"
-    )
-    echo [INFO] Current value: %CURRENT%
-)
-del temp_reg.txt
-set /p safeconfirm="Do you want to update this registry value? (Y/N): "
-if /i not "%safeconfirm%"=="Y" goto :EOF
-echo [INFO] Updating registry...
-reg add "%~1" /v %~2 /t %~3 /d %~4 /f
-if errorlevel 1 (
-   echo [WARNING] Failed to update registry value %~2 in %~1.
-) else (
-   echo [INFO] Updated registry value %~2 in %~1.
-)
+echo Apply all tweaks in this category Automatically (A)
+echo or Confirm each tweak Individually (I)?
+choice /C AI /N /M "Choose [A/I]: "
+if errorlevel 2 ( set "AUTO=0" & call :Log "Mode: Interactive" ) else ( set "AUTO=1" & call :Log "Mode: Automatic" )
 goto :EOF
+
+:AskAndRun
+:: %1 = Description, %2 = Command
+setlocal EnableDelayedExpansion
+set "_desc=%~1"
+set "_cmd=%~2"
+echo.
+echo [TASK] %_desc%
+echo Apply? (Y/N)
+set /p "_ok= > "
+if /i not "!_ok!"=="Y" ( echo [SKIP] %_desc% & endlocal & goto :EOF )
+call :Log "EXEC: %_desc% -> %_cmd%"
+echo [RUN] %_cmd%
+cmd /s /c "%_cmd%" 1>>"%LOGFILE%" 2>>&1
+if errorlevel 1 ( echo [WARN] Command failed. See log. & call :Log "FAIL: %_desc%" ) else ( echo [OK] Done. & call :Log "OK: %_desc%" )
+endlocal
+goto :EOF
+
+:Run
+:: %1 = Command line (silent + logged)
+setlocal EnableDelayedExpansion
+set "_cmd=%~1"
+echo.
+echo [RUN] %_cmd%
+call :Log "EXEC: %_cmd%"
+cmd /s /c "%_cmd%" 1>>"%LOGFILE%" 2>>&1
+if errorlevel 1 ( echo [WARN] Command failed. See log. & call :Log "FAIL: %_cmd%" ) else ( echo [OK] Done. & call :Log "OK: %_cmd%" )
+endlocal
+goto :EOF
+
+:SafeRegAdd
+:: %1 = Key, %2 = ValueName, %3 = Type, %4 = Data, %5 = Description
+setlocal EnableDelayedExpansion
+set "_key=%~1"
+set "_val=%~2"
+set "_type=%~3"
+set "_data=%~4"
+set "_desc=%~5"
+
+echo.
+echo [REG] %_desc%
+echo [REG] Querying current: %_key%\%_val%
+reg query "%_key%" /v "%_val%" >"%TEMP%\_regq.txt" 2>nul
+if errorlevel 1 (
+    echo [REG] Current: (not set)
+) else (
+    for /f "tokens=1,2,*" %%A in ('type "%TEMP%\_regq.txt" ^| findstr /I /R " %_val% "') do (
+        echo [REG] Current: %%C
+    )
+)
+del "%TEMP%\_regq.txt" >nul 2>&1
+
+if "%AUTO%"=="0" (
+    set /p "_conf=Update this registry value? (Y/N) > "
+    if /i not "!_conf!"=="Y" ( echo [SKIP] %_key%\%_val% & endlocal & goto :EOF )
+)
+
+:: Export key backup
+set "_bfile=%BACKUP_DIR%\%_val%_%RANDOM%.reg"
+reg export "%_key%" "%_bfile%" /y >nul 2>&1
+call :Log "Backup: %_key% -> %_bfile%"
+
+:: Apply value
+call :Log "REG ADD: ""%_key%"" /v ""%_val%"" /t %_type% /d %_data% /f"
+reg add "%_key%" /v "%_val%" /t %_type% /d %_data% /f 1>>"%LOGFILE%" 2>>&1
+if errorlevel 1 ( echo [WARN] Failed to update %_val%. See log. & call :Log "FAIL REG: %_key%\%_val%" ) else ( echo [OK] Updated %_val%. & call :Log "OK REG: %_key%\%_val%" )
+endlocal
+goto :EOF
+
+:CreateRestorePoint
+echo [INFO] Creating System Restore Point...
+call :Log "Creating system restore point..."
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Checkpoint-Computer -Description 'W_Optimizer_Restore' -RestorePointType 'MODIFY_SETTINGS'" 1>>"%LOGFILE%" 2>>&1
+if errorlevel 1 (echo [WARN] Restore point creation may have failed. See log.) else echo [OK] Restore point created.
+goto :EOF
+
+:CreateRegBackup
+echo [INFO] Creating full Registry backup...
+set "TS="
+for /f "usebackq delims=" %%T in (`powershell -NoProfile -Command "(Get-Date).ToString('yyyy-MM-dd_HH-mm-ss')"`) do set "TS=%%T"
+if not defined TS set "TS=unknown"
+set "REG_BK_DIR=%USERPROFILE%\Documents\RegistryBackup_%TS%"
+mkdir "%REG_BK_DIR%" >nul 2>&1
+if not exist "%REG_BK_DIR%" ( echo [ERROR] Failed to create backup directory. & call :Log "ERROR: mkdir %REG_BK_DIR%" & goto :EOF )
+echo [INFO] Backing up to: %REG_BK_DIR%
+reg export HKCR "%REG_BK_DIR%\HKCR.reg" /y >nul
+reg export HKCU "%REG_BK_DIR%\HKCU.reg" /y >nul
+reg export HKLM "%REG_BK_DIR%\HKLM.reg" /y >nul
+reg export HKU  "%REG_BK_DIR%\HKU.reg"  /y >nul
+reg export HKCC "%REG_BK_DIR%\HKCC.reg" /y >nul
+echo [OK] Registry backup completed.
+call :Log "Registry backup -> %REG_BK_DIR%"
+goto :EOF
+
+:Log
+:: %* = message
+setlocal EnableDelayedExpansion
+echo [!date! !time!] %*>>"%LOGFILE%"
+endlocal
+goto :EOF
+
+:: ========================== Data block for banner ===============================
+#> =================================================================================================
+#>   __        __         _           _                  ____   _       _             _
+#>   \ \      / /__  _ __| |__   __ _| |_ ___  _ __     / ___| | |_ ___| |_ _ __ __ _| | ___  _ __
+#>    \ \ /\ / / _ \| '__| '_ \ / _` | __/ _ \| '_ \   | |  _  | __/ __| __| '__/ _` | |/ _ \| '__|
+#>     \ V  V / (_) | |  | | | | (_| | || (_) | | | |  | |_| | | |_\__ \ |_| | | (_| | | (_) | |
+#>      \_/\_/ \___/|_|  |_| |_|\__,_|\__\___/|_| |_|   \____|  \__|___/\__|_|  \__,_|_|\___/|_|
+#> -------------------------------------------------------------------------------------------------
+#>   Windows 10-11 Ultimate Optimizer & Hardener  •  Interactive or Automatic  •  Logged operations
+#> =================================================================================================
