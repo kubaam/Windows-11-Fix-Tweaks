@@ -173,8 +173,8 @@ echo ===========================================================================
 echo Stops services, renames caches, restarts services.
 call :ConfirmMode
 if "%AUTO%"=="0" (
-    call :AskAndRun "Stop WU services" ^
-        "net stop wuauserv ^&^& net stop bits ^&^& net stop cryptSvc ^&^& net stop msiserver ^&^& net stop appidsvc"
+    call :AskAndRun "Stop WU services (wuauserv, bits, cryptSvc, msiserver, appidsvc)" ^
+        "net stop wuauserv ^& net stop bits ^& net stop cryptSvc ^& net stop msiserver ^& net stop appidsvc"
 ) else (
     for %%S in (wuauserv bits cryptSvc msiserver appidsvc) do call :Run "net stop %%S"
 )
@@ -187,8 +187,8 @@ if exist "%SystemRoot%\System32\catroot2" (
     ren "%SystemRoot%\System32\catroot2" "catroot2.bak_%RANDOM%" 1>>"%LOGFILE%" 2>>&1
 )
 if "%AUTO%"=="0" (
-    call :AskAndRun "Start WU services" ^
-        "net start wuauserv ^&^& net start bits ^&^& net start cryptSvc ^&^& net start msiserver ^&^& net start appidsvc"
+    call :AskAndRun "Start WU services (wuauserv, bits, cryptSvc, msiserver, appidsvc)" ^
+        "net start wuauserv ^& net start bits ^& net start cryptSvc ^& net start msiserver ^& net start appidsvc"
 ) else (
     for %%S in (wuauserv bits cryptSvc msiserver appidsvc) do call :Run "net start %%S"
 )
@@ -259,6 +259,7 @@ if "%AUTO%"=="0" (
     call :Run "bcdedit /set disabledynamictick yes"
 )
 echo [OK] Performance tweaks completed.
+if "%FORCE_AUTO%"=="1" goto :EOF
 pause
 goto MainMenu
 
@@ -284,6 +285,7 @@ if "%AUTO%"=="0" (
     call :SafeRegAdd "HKCU\Control Panel\Desktop" "UserPreferencesMask" REG_BINARY 9012038010000000 "Refined UI performance mask"
 )
 echo [OK] Visual/UI tweaks applied.
+if "%FORCE_AUTO%"=="1" goto :EOF
 pause
 goto MainMenu
 
@@ -320,6 +322,7 @@ call :Run "sc config dmwappushservice start= disabled"
 call :Run "sc stop dmwappushservice"
 
 echo [OK] Privacy hardening applied.
+if "%FORCE_AUTO%"=="1" goto :EOF
 pause
 goto MainMenu
 
@@ -359,6 +362,7 @@ call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "Disabl
 call :SafeRegAdd "HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableSoftLanding"     REG_DWORD 1 "Disable SoftLanding"
 call :SafeRegAdd "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" "LaunchTo" REG_DWORD 1 "Explorer opens 'This PC'"
 echo [OK] Common tweaks applied.
+if "%FORCE_AUTO%"=="1" goto :EOF
 pause
 goto MainMenu
 
@@ -396,6 +400,7 @@ for /f "tokens=*" %%K in ('reg query "HKLM\SYSTEM\CurrentControlSet\Services\Tcp
 call :SafeRegAdd "HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl" "Win32PrioritySeparation" REG_DWORD 26 "Favor foreground apps"
 
 echo [OK] Advanced tweaks applied.
+if "%FORCE_AUTO%"=="1" goto :EOF
 pause
 goto MainMenu
 
@@ -421,6 +426,7 @@ if "%AUTO%"=="0" (
     call :Run "ipconfig /renew"
 )
 echo [OK] Network fixes executed.
+if "%FORCE_AUTO%"=="1" goto :EOF
 pause
 goto MainMenu
 
@@ -445,8 +451,8 @@ if "%AUTO%"=="0" (
     echo Optional: Disable IPv6 on all network interfaces? (Y/N)
     set /p "_ipv6= > "
     if /i "%_ipv6%"=="Y" (
-        for /f "tokens=3,* delims= " %%A in ('netsh interface ipv6 show interfaces ^| findstr /R "^\ *[0-9]"') do (
-            call :Run "netsh interface ipv6 set interface ""%%B"" admin=disabled"
+        for /f "tokens=1,2,3,4,* delims= " %%A in ('netsh interface ipv6 show interfaces ^| findstr /R "^\ *[0-9]"') do (
+            call :Run "netsh interface ipv6 set interface ""%%E"" admin=disabled"
         )
     )
 )
@@ -495,6 +501,7 @@ if "%AUTO%"=="0" (
 )
 
 echo [OK] Additional tweaks completed.
+if "%FORCE_AUTO%"=="1" goto :EOF
 pause
 goto MainMenu
 
@@ -650,8 +657,13 @@ set "_desc=%~1"
 set "_cmd=%~2"
 echo.
 echo [TASK] %_desc%
-echo Apply? (Y/N)
-set /p "_ok= > "
+if "%AUTO%"=="1" (
+    set "_ok=Y"
+    echo [AUTO] Applying without prompt.
+) else (
+    set "_ok="
+    set /p "_ok=Apply? (Y/N) > "
+)
 if /i not "!_ok!"=="Y" ( echo [SKIP] %_desc% & endlocal & goto :EOF )
 call :Log "EXEC: %_desc% -> %_cmd%"
 echo [RUN] %_cmd%
