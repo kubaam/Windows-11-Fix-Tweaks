@@ -627,15 +627,11 @@ exit /b
 :: ========================== Subroutines =========================================
 
 :Banner
-rem Prints banner safely from embedded data lines (#>) at the bottom of this file.
-setlocal DisableDelayedExpansion
-for /f "usebackq delims=" %%# in (`findstr /b "#>" "%~f0"`) do (
-    set "L=%%#"
-    setlocal EnableDelayedExpansion
-    echo(!L:#> =!
-    endlocal
-)
-endlocal & goto :EOF
+echo =================================================================================================
+echo                       Windows 10-11 Ultimate Optimizer ^& Hardener
+echo                       Interactive or Automatic   --   Logged operations
+echo =================================================================================================
+goto :EOF
 
 :ConfirmMode
 if "%FORCE_AUTO%"=="1" (
@@ -755,13 +751,3 @@ echo [!date! !time!] %*>>"%LOGFILE%"
 endlocal
 goto :EOF
 
-:: ========================== Data block for banner ===============================
-#> =================================================================================================
-#>   __        __         _           _                  ____   _       _             _
-#>   \ \      / /__  _ __| |__   __ _| |_ ___  _ __     / ___| | |_ ___| |_ _ __ __ _| | ___  _ __
-#>    \ \ /\ / / _ \| '__| '_ \ / _` | __/ _ \| '_ \   | |  _  | __/ __| __| '__/ _` | |/ _ \| '__|
-#>     \ V  V / (_) | |  | | | | (_| | || (_) | | | |  | |_| | | |_\__ \ |_| | | (_| | | (_) | |
-#>      \_/\_/ \___/|_|  |_| |_|\__,_|\__\___/|_| |_|   \____|  \__|___/\__|_|  \__,_|_|\___/|_|
-#> -------------------------------------------------------------------------------------------------
-#>   Windows 10-11 Ultimate Optimizer & Hardener  •  Interactive or Automatic  •  Logged operations
-#> =================================================================================================
