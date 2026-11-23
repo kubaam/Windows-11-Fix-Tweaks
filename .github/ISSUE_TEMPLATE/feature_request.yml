@@ -1,0 +1,28 @@
+name: Feature or Tweak Request
+description: Propose a new system repair, debloat action, or hardening tweak.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Suggest an enhancement or additional tweak for Windows 10/11.
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Tweak or Feature
+      description: Describe what should be changed or added.
+    validations:
+      required: true
+  - type: textarea
+    id: technical_details
+    attributes:
+      label: Technical Details (Registry Paths, Commands)
+      description: Provide the specific registry keys, values, or native commands involved.
+    validations:
+      required: true
+  - type: input
+    id: documentation_reference
+    attributes:
+      label: Official Microsoft / Vendor Documentation
+      description: Link to relevant Microsoft Learn or MSDN articles describing the keys.
+    validations:
+      required: false

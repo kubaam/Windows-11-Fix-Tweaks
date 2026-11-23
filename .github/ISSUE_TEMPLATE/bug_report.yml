@@ -1,0 +1,37 @@
+name: Bug Report
+description: Report an issue, unexpected behavior, or error in the script.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for helping improve the project. Please provide details below.
+  - type: input
+    id: os_build
+    attributes:
+      label: Windows Version and Build Number
+      description: Run `winver` in PowerShell/Run dialog and paste the exact version (e.g., Windows 11 23H2 Build 22631.4317).
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the Bug
+      description: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: log_snippet
+    attributes:
+      label: Excerpt from Log File
+      description: Paste relevant lines from `%TEMP%\W_Tweaks_*.log`.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Confirmation
+      options:
+        - label: I executed the script with Administrator privileges.
+          required: true
+        - label: I checked if this issue has already been reported.
+          required: true

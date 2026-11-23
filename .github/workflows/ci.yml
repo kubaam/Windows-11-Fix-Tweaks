@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-validate:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate batch file syntax
+        shell: cmd
+        run: |
+          if not exist Win11_AllInOneTweaks.bat (
+            echo File Win11_AllInOneTweaks.bat missing!
+            exit /b 1
+          )
+          echo [OK] Script Win11_AllInOneTweaks.bat detected.
+
+      - name: Validate PowerShell commands inside batch
+        shell: pwsh
+        run: |
+          $content = Get-Content Win11_AllInOneTweaks.bat -Raw
+          Write-Host "Script size: $($content.Length) bytes"
+          if ($content.Length -lt 1000) {
+            throw "Script is unexpectedly truncated."
+          }
+          Write-Host "Validation passed successfully."

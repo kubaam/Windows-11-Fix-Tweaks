@@ -3,7 +3,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 :: =============================================================================
 :: Windows 10-11 Ultimate Optimizer & Hardener (Interactive)
-:: by ambry/kubaam  •  October 2025  •  Single-file, logged, safe-by-default
+:: by ambry/kubaam  -  Single-file, logged, safe-by-default
 :: =============================================================================
 :: DISCLAIMER: This script modifies system settings and registry keys.
 :: - Run as Administrator.
